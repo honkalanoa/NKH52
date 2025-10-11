@@ -51,5 +51,95 @@ body {
     height: 300px;
     margin-top: 20px;
     background: #181818; /* optional: makes the area visible */
-  }
-  
+  }/* ---- TAX CALCULATOR ---- */
+#tax-calculator {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 30px;
+  color: #f1f5f9;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#tax-calculator:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+#tax-calculator h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #93c5fd;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+#tax-calculator label {
+  display: block;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  margin-bottom: 6px;
+}
+
+#tax-calculator input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background-color: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#tax-calculator input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.4);
+}
+
+#tax-calculator button {
+  display: block;
+  width: 100%;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+#tax-calculator button:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+#taxResult {
+  margin-top: 18px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  text-align: center;
+  color: #e2e8f0;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+#taxResult p {
+  margin: 6px 0;
+}
+
+#taxResult p strong {
+  color: #93c5fd;
+}

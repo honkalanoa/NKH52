@@ -18,6 +18,7 @@ import {
 const loginDiv = document.getElementById("login");
 const dashDiv = document.getElementById("dashboard");
 const publicDiv = document.getElementById("public-view");
+const marketsDiv = document.getElementById("markets-page");
 const balanceP = document.getElementById("balance");
 const transactionsList = document.getElementById("transactions");
 const chartCanvas = document.getElementById("fundChart");
@@ -45,6 +46,81 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
   }
 });
 document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
+
+// ---------- MARKETS NAVIGATION ----------
+let tradingViewWidgets = {};
+
+document.getElementById("marketsBtn").addEventListener("click", () => {
+  dashDiv.style.display = "none";
+  marketsDiv.style.display = "block";
+  initializeTradingViewWidgets();
+});
+
+document.getElementById("backToDashboardBtn").addEventListener("click", () => {
+  marketsDiv.style.display = "none";
+  dashDiv.style.display = "block";
+  // Clean up TradingView widgets when leaving
+  cleanupTradingViewWidgets();
+});
+
+function initializeTradingViewWidgets() {
+  // Initialize all TradingView widgets
+  const widgets = [
+    { id: 'nasdaq100-widget', symbol: 'NDX' },
+    { id: 'sse-widget', symbol: '000001' },
+    { id: 'hangseng-widget', symbol: 'HSI' },
+    { id: 'dax-widget', symbol: 'GDAXI' },
+    { id: 'ftse100-widget', symbol: 'FTSE' }
+  ];
+
+  widgets.forEach(widget => {
+    createTradingViewWidget(widget.id, widget.symbol);
+  });
+}
+
+function createTradingViewWidget(containerId, symbol) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Clean up existing widget if it exists
+  if (tradingViewWidgets[containerId]) {
+    tradingViewWidgets[containerId].remove();
+  }
+
+  // Create new TradingView widget
+  tradingViewWidgets[containerId] = new TradingView.widget({
+    "autosize": true,
+    "symbol": symbol,
+    "interval": "D",
+    "timezone": "Etc/UTC",
+    "theme": "dark",
+    "style": "1",
+    "locale": "en",
+    "toolbar_bg": "#0d1a2b",
+    "enable_publishing": false,
+    "hide_top_toolbar": true,
+    "hide_legend": false,
+    "save_image": false,
+    "container_id": containerId,
+    "studies": [
+      "RSI@tv-basicstudies"
+    ],
+    "show_popup_button": true,
+    "popup_width": "1000",
+    "popup_height": "650",
+    "no_referral_id": true,
+    "referral_id": "NKH52"
+  });
+}
+
+function cleanupTradingViewWidgets() {
+  Object.values(tradingViewWidgets).forEach(widget => {
+    if (widget && widget.remove) {
+      widget.remove();
+    }
+  });
+  tradingViewWidgets = {};
+}
 
 // ---------- POINTS CALCULATION ----------
 async function getFundData() {
@@ -293,6 +369,36 @@ async function loadPublicView() {
   const perf = calcPerformance(txs, currentAUM);
   renderPerf(publicPerfDiv, perf);
 }
+// ---------- TAX CALCULATOR ----------
+document.getElementById("calcTaxBtn").addEventListener("click", () => {
+  const gainInput = parseFloat(document.getElementById("gainInput").value);
+  const resultDiv = document.getElementById("taxResult");
+
+  if (isNaN(gainInput) || gainInput <= 0) {
+    resultDiv.innerHTML = "<p style='color: red;'>Please enter a valid gain amount.</p>";
+    return;
+  }
+
+  const threshold = 30000;
+  let taxAmount = 0;
+
+  if (gainInput <= threshold) {
+    taxAmount = gainInput * 0.30;
+  } else {
+    const baseTax = threshold * 0.30;
+    const extraTax = (gainInput - threshold) * 0.34;
+    taxAmount = baseTax + extraTax;
+  }
+
+  const afterTax = gainInput - taxAmount;
+
+  resultDiv.innerHTML = `
+    <p><strong>Gain:</strong> €${gainInput.toFixed(2)}</p>
+    <p><strong>Tax to pay:</strong> €${taxAmount.toFixed(2)}</p>
+    <p><strong>After-tax amount:</strong> €${afterTax.toFixed(2)}</p>
+  `;
+});
+
 
 // ---------- AUTH STATE ----------
 onAuthStateChanged(auth, user => {
@@ -300,11 +406,13 @@ onAuthStateChanged(auth, user => {
     publicDiv.style.display = "none";
     loginDiv.style.display = "none";
     dashDiv.style.display = "block";
+    marketsDiv.style.display = "none";
     loadDashboard();
   } else {
     publicDiv.style.display = "block";
     loginDiv.style.display = "block";
     dashDiv.style.display = "none";
+    marketsDiv.style.display = "none";
     loadPublicView();
   }
 });

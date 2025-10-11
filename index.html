@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NKH52 Fund Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <style>
     :root {
       --bg: #0c1624;
@@ -159,9 +160,64 @@
       opacity: 0.85;
     }
   
+    /* TradingView Markets Page Styles */
+    #markets-page {
+      background: var(--card);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      border-radius: 12px;
+      max-width: 1400px;
+      margin: 30px auto;
+      padding: 25px;
+    }
+
+    .tradingview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .tradingview-widget-container {
+      background: #0d1a2b;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .tradingview-widget-container:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .tradingview-widget-container h4 {
+      margin: 0 0 15px 0;
+      color: #fff;
+      font-size: 1.1rem;
+      text-align: center;
+    }
+
+    .tradingview-widget-wrapper {
+      width: 100%;
+      height: 300px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .tradingview-widget-container__widget {
+      width: 100%;
+      height: 100%;
+    }
+
     @media (max-width: 600px) {
       #login input, input[type="number"], input[type="date"] {
         width: 100%;
+      }
+      .tradingview-grid {
+        grid-template-columns: 1fr;
+      }
+      .tradingview-widget-wrapper {
+        height: 250px;
       }
     }
   </style>
@@ -191,9 +247,18 @@
   </div>
 
   <!-- Dashboard (after login) -->
+   <div id="tax-calculator" class="card">
+  <h3>Tax Calculator</h3>
+  <label for="gainInput">Enter estimated gain (€):</label>
+  <input type="number" id="gainInput" placeholder="e.g. 50000">
+  <button id="calcTaxBtn">Calculate Tax</button>
+  <div id="taxResult"></div>
+</div>
+
   <div id="dashboard">
     <h3>Admin Dashboard</h3>
     <button id="logoutBtn">Logout</button>
+    <button id="marketsBtn" style="margin-left: 10px;">View Markets</button>
     <p id="balance"></p>
 
     <div class="perf" id="perf"></div>
@@ -219,6 +284,59 @@
 
     <h4>Transactions</h4>
     <ul id="transactions"></ul>
+  </div>
+
+  <!-- Markets Page with TradingView Widgets -->
+  <div id="markets-page" style="display: none;">
+    <h3>World Markets Overview</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <span style="color: #a5b1c2; font-size: 0.9rem;">Real-time market data powered by TradingView</span>
+      </div>
+      <button id="backToDashboardBtn" style="background: var(--accent);">Back to Dashboard</button>
+    </div>
+    
+    <div class="tradingview-grid">
+      <!-- NASDAQ 100 -->
+      <div class="tradingview-widget-container">
+        <h4>NASDAQ 100</h4>
+        <div class="tradingview-widget-wrapper">
+          <div class="tradingview-widget-container__widget" id="nasdaq100-widget"></div>
+        </div>
+      </div>
+
+      <!-- SSE Index -->
+      <div class="tradingview-widget-container">
+        <h4>SSE Index</h4>
+        <div class="tradingview-widget-wrapper">
+          <div class="tradingview-widget-container__widget" id="sse-widget"></div>
+        </div>
+      </div>
+
+      <!-- Hang Seng Index -->
+      <div class="tradingview-widget-container">
+        <h4>Hang Seng Index</h4>
+        <div class="tradingview-widget-wrapper">
+          <div class="tradingview-widget-container__widget" id="hangseng-widget"></div>
+        </div>
+      </div>
+
+      <!-- DAX -->
+      <div class="tradingview-widget-container">
+        <h4>DAX</h4>
+        <div class="tradingview-widget-wrapper">
+          <div class="tradingview-widget-container__widget" id="dax-widget"></div>
+        </div>
+      </div>
+
+      <!-- FTSE 100 -->
+      <div class="tradingview-widget-container">
+        <h4>FTSE 100</h4>
+        <div class="tradingview-widget-wrapper">
+          <div class="tradingview-widget-container__widget" id="ftse100-widget"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./app.js"></script>
