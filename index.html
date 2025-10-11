@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NKH52 Fund Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0c1624;
+      --card: #132238;
+      --border: #1f2f4a;
+      --text: #e7ecf2;
+      --accent: #3b82f6;
+      --gain: #22c55e;
+      --loss: #ef4444;
+    }
+  
+    * {
+      box-sizing: border-box;
+    }
+  
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top left, #0a1527, #08111d 80%);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+  
+    h2, h3, h4 {
+      text-align: center;
+      color: #fff;
+      margin-top: 20px;
+    }
+  
+    #public-view,
+    #dashboard,
+    #login {
+      background: var(--card);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+      border-radius: 12px;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 25px;
+    }
+  
+    #login input {
+      width: 80%;
+      max-width: 300px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0d1a2b;
+      color: var(--text);
+    }
+  
+    #login input::placeholder {
+      color: #a5b1c2;
+    }
+  
+    #login button {
+      padding: 10px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+  
+    #login button:hover {
+      opacity: 0.85;
+    }
+  
+    .chart-container {
+      width: 100%;
+      max-width: 800px;
+      margin: 25px auto;
+    }
+  
+    .perf {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+  
+    .perf span {
+      background: #0d1a2b;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      min-width: 90px;
+      text-align: center;
+      transition: transform 0.1s, background 0.3s;
+    }
+  
+    .perf span:hover {
+      transform: scale(1.05);
+      background: #152a48;
+    }
+  
+    .gain { color: var(--gain); font-weight: 600; }
+    .loss { color: var(--loss); font-weight: 600; }
+  
+    #transactions {
+      list-style: none;
+      padding: 0;
+      max-height: 250px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+    }
+  
+    #transactions li {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: #d5dee8;
+    }
+  
+    input[type="number"],
+    input[type="date"] {
+      padding: 8px;
+      margin: 4px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0d1a2b;
+      color: var(--text);
+      width: 150px;
+    }
+  
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+  
+    button:hover {
+      opacity: 0.9;
+    }
+  
+    #logoutBtn {
+      float: right;
+      background: var(--loss);
+    }
+  
+    #logoutBtn:hover {
+      opacity: 0.85;
+    }
+  
+    @media (max-width: 600px) {
+      #login input, input[type="number"], input[type="date"] {
+        width: 100%;
+      }
+    }
+  </style>
+  
+  </style>
+</head>
+<body>
+
+  <h2>NKH52 Fund</h2>
+
+  <!-- Public (before login) -->
+  <div id="public-view">
+    <h3>Overview (read-only)</h3>
+    <p id="public-balance">Total: ...</p>
+    <div class="perf" id="public-perf"></div>
+    <div class="chart-container">
+      <canvas id="publicChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div id="login">
+    <h3>Login</h3>
+    <input type="email" id="email" placeholder="Email"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Dashboard (after login) -->
+  <div id="dashboard">
+    <h3>Admin Dashboard</h3>
+    <button id="logoutBtn">Logout</button>
+    <p id="balance"></p>
+
+    <div class="perf" id="perf"></div>
+
+    <div class="chart-container">
+      <canvas id="fundChart"></canvas>
+    </div>
+
+    <h4>Add Transaction</h4>
+    <input type="number" id="tx-amount" placeholder="Amount (€)">
+    <input type="date" id="tx-date">
+    <button id="buy-btn">Buy</button>
+    <button id="sell-btn">Sell</button>
+
+    <h4>Transactions</h4>
+    <ul id="transactions"></ul>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #0b0b0b;
+    color: #e6e6e6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 50px;
+  }
+  
+  h1, h2 {
+    color: #00ff9d;
+  }
+  
+  input, select, button {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+  }
+  
+  button {
+    background: #00ff9d;
+    color: #0b0b0b;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .transaction-box {
+    margin-top: 20px;
+    background: #181818;
+    padding: 15px;
+    border-radius: 10px;
+  }
+  
+  #transactions {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+    width: 260px;
+  }
+  
+  #transactions li {
+    background: #181818;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+  }
+  #fundChart {
+    max-width: 100%;
+    height: 300px;
+    margin-top: 20px;
+    background: #181818; /* optional: makes the area visible */
+  }
+  
