@@ -26,6 +26,11 @@ const perfDiv = document.getElementById("perf");
 const publicPerfDiv = document.getElementById("public-perf");
 const publicBalance = document.getElementById("public-balance");
 
+// New AUM Elements
+const aumTotal = document.getElementById("aum-total");
+const aumChartCanvas = document.getElementById("aumChart");
+let aumChart = null;
+
 let fundChart = null;
 let publicChart = null;
 
@@ -41,6 +46,25 @@ document.getElementById("loginBtn").addEventListener("click", async () => {
 });
 document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
 
+// ---------- POINTS CALCULATION ----------
+async function getFundData() {
+  const totalRef = doc(db, "funds", "total");
+  const totalSnap = await getDoc(totalRef);
+  if (!totalSnap.exists()) {
+    await updateDoc(totalRef, { amount: 0, totalInvested: 0, lastUpdated: serverTimestamp() }).catch(() => {});
+    return { amount: 0, totalInvested: 0 };
+  }
+  const data = totalSnap.data();
+  if (!data.totalInvested) data.totalInvested = data.amount; // fallback
+  return data;
+}
+
+function calculatePoints(aum, totalInvested) {
+  if (totalInvested === 0) return 0;
+  const scalingFactor = 0.01; // adjust based on scale preference
+  return (aum / totalInvested) * aum * scalingFactor;
+}
+
 // ---------- ADD TRANSACTION ----------
 async function addTransaction(type) {
   const amount = parseFloat(document.getElementById("tx-amount").value);
@@ -48,27 +72,90 @@ async function addTransaction(type) {
   if (!dateInput || isNaN(amount) || amount <= 0) return alert("Invalid input");
 
   const totalRef = doc(db, "funds", "total");
-  const totalSnap = await getDoc(totalRef);
-  const current = totalSnap.exists() ? totalSnap.data().amount : 0;
-  const newAmount = type === "buy" ? current + amount : current - amount;
+  const fundData = await getFundData();
+  const currentAUM = fundData.amount || 0;
+  const currentInvested = fundData.totalInvested || 0;
 
-  await updateDoc(totalRef, { amount: newAmount, lastUpdated: serverTimestamp() });
+  let newAmount, newTotalInvested;
+  if (type === "buy") {
+    newAmount = currentAUM + amount;
+    newTotalInvested = currentInvested + amount;
+  } else {
+    newAmount = currentAUM - amount;
+    newTotalInvested = currentInvested; // selling doesn't reduce total invested
+  }
+
+  await updateDoc(totalRef, {
+    amount: newAmount,
+    totalInvested: newTotalInvested,
+    lastUpdated: serverTimestamp()
+  });
+
   await addDoc(collection(db, "funds", "total", "transactions"), {
     type,
     amount,
     date: dateInput,
-    newAmount
+    newAmount: newAmount
   });
 
   document.getElementById("tx-amount").value = "";
   document.getElementById("tx-date").value = "";
+
   loadDashboard();
 }
 
 document.getElementById("buy-btn").addEventListener("click", () => addTransaction("buy"));
 document.getElementById("sell-btn").addEventListener("click", () => addTransaction("sell"));
 
-// ---------- CALCULATE PERFORMANCE ----------
+// ---------- AUM UPDATE ----------
+document.getElementById("update-aum-btn").addEventListener("click", async () => {
+  const amount = parseFloat(document.getElementById("aum-amount").value);
+  if (isNaN(amount) || amount <= 0) return alert("Enter a valid AUM amount.");
+
+  await addDoc(collection(db, "funds", "total", "aumHistory"), {
+    amount,
+    date: serverTimestamp()
+  });
+
+  document.getElementById("aum-amount").value = "";
+  loadAUM();
+});
+
+// ---------- LOAD AUM ----------
+async function loadAUM() {
+  const aumSnap = await getDocs(collection(db, "funds", "total", "aumHistory"));
+  const data = aumSnap.docs.map(d => d.data()).sort((a, b) => new Date(a.date.seconds * 1000) - new Date(b.date.seconds * 1000));
+
+  if (data.length === 0) {
+    aumTotal.innerText = "No AUM data yet.";
+    return;
+  }
+
+  const latest = data[data.length - 1];
+  aumTotal.innerText = `Current AUM: €${latest.amount.toFixed(2)}`;
+
+  const labels = data.map(d => new Date(d.date.seconds * 1000).toLocaleDateString());
+  const values = data.map(d => d.amount);
+
+  if (aumChart) aumChart.destroy();
+  aumChart = new Chart(aumChartCanvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: "AUM (€)",
+        data: values,
+        borderColor: "rgb(0,102,204)",
+        backgroundColor: "rgba(0,102,204,0.15)",
+        fill: true,
+        tension: 0.1
+      }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+// ---------- PERFORMANCE ----------
 function calcPerformance(txs, currentTotal) {
   const now = new Date();
   const ranges = {
@@ -107,7 +194,6 @@ function calcPerformance(txs, currentTotal) {
   return perf;
 }
 
-// ---------- DISPLAY PERFORMANCE ----------
 function renderPerf(container, perf) {
   container.innerHTML = "";
   for (const [label, val] of Object.entries(perf)) {
@@ -121,8 +207,19 @@ function renderPerf(container, perf) {
 
 // ---------- LOAD DASHBOARD ----------
 async function loadDashboard() {
-  const totalSnap = await getDoc(doc(db, "funds", "total"));
-  const currentTotal = totalSnap.exists() ? totalSnap.data().amount : 0;
+  const fundData = await getFundData();
+  const currentAUM = fundData.amount || 0;
+  const totalInvested = fundData.totalInvested || 0;
+  const points = calculatePoints(currentAUM, totalInvested);
+
+  balanceP.innerText = `AUM: €${currentAUM.toFixed(2)}`;
+  let pointsEl = document.getElementById("pointsDisplay");
+  if (!pointsEl) {
+    pointsEl = document.createElement("p");
+    pointsEl.id = "pointsDisplay";
+    balanceP.parentNode.insertBefore(pointsEl, balanceP.nextSibling);
+  }
+  pointsEl.innerText = `Points: ${points.toFixed(2)}`;
 
   const txSnap = await getDocs(collection(db, "funds", "total", "transactions"));
   const txs = txSnap.docs
@@ -130,29 +227,42 @@ async function loadDashboard() {
     .filter(t => t.newAmount !== undefined)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  balanceP.innerText = `Total: ${currentTotal} pts (€${currentTotal})`;
   transactionsList.innerHTML = txs.map(
     t => `<li>${t.type.toUpperCase()} €${t.amount} (${t.date}) → total: ${t.newAmount}</li>`
   ).join("");
 
   const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => t.newAmount);
+  const dataPoints = txs.map(t => calculatePoints(t.newAmount, totalInvested));
 
   if (fundChart) fundChart.destroy();
   fundChart = new Chart(chartCanvas, {
     type: "line",
-    data: { labels, datasets: [{ label: "Fund Points", data: dataPoints, borderColor: "rgb(75,192,192)", backgroundColor: "rgba(75,192,192,0.2)", fill: true, tension: 0.1 }] },
+    data: {
+      labels,
+      datasets: [{
+        label: "Fund Points",
+        data: dataPoints,
+        borderColor: "rgb(34,197,94)",
+        backgroundColor: "rgba(34,197,94,0.2)",
+        fill: true,
+        tension: 0.1
+      }]
+    },
     options: { responsive: true, scales: { y: { beginAtZero: true } } }
   });
 
-  const perf = calcPerformance(txs, currentTotal);
+  const perf = calcPerformance(txs, currentAUM);
   renderPerf(perfDiv, perf);
+  await loadAUM(); // load AUM chart when dashboard loads
 }
 
-// ---------- PUBLIC DASHBOARD ----------
+// ---------- LOAD PUBLIC VIEW ----------
 async function loadPublicView() {
-  const totalSnap = await getDoc(doc(db, "funds", "total"));
-  const currentTotal = totalSnap.exists() ? totalSnap.data().amount : 0;
+  const fundData = await getFundData();
+  const currentAUM = fundData.amount || 0;
+  const totalInvested = fundData.totalInvested || 0;
+  const points = calculatePoints(currentAUM, totalInvested);
+  publicBalance.innerText = `Points: ${points.toFixed(2)} (€${currentAUM.toFixed(2)})`;
 
   const txSnap = await getDocs(collection(db, "funds", "total", "transactions"));
   const txs = txSnap.docs
@@ -160,19 +270,27 @@ async function loadPublicView() {
     .filter(t => t.newAmount !== undefined)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  publicBalance.innerText = `Total: ${currentTotal} pts (€${currentTotal})`;
-
   const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => t.newAmount);
+  const dataPoints = txs.map(t => calculatePoints(t.newAmount, totalInvested));
 
   if (publicChart) publicChart.destroy();
   publicChart = new Chart(publicChartCanvas, {
     type: "line",
-    data: { labels, datasets: [{ label: "Fund Points (Public)", data: dataPoints, borderColor: "rgb(100,100,255)", backgroundColor: "rgba(100,100,255,0.1)", fill: true, tension: 0.1 }] },
+    data: {
+      labels,
+      datasets: [{
+        label: "Fund Points (Public)",
+        data: dataPoints,
+        borderColor: "rgb(100,100,255)",
+        backgroundColor: "rgba(100,100,255,0.1)",
+        fill: true,
+        tension: 0.1
+      }]
+    },
     options: { responsive: true, scales: { y: { beginAtZero: true } } }
   });
 
-  const perf = calcPerformance(txs, currentTotal);
+  const perf = calcPerformance(txs, currentAUM);
   renderPerf(publicPerfDiv, perf);
 }
 
