@@ -4,6 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NKH52 Fund Dashboard</title>
+  
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://cdn.jsdelivr.net https://s3.tradingview.com https://*.tradingview.com https://static.tradingview.com;
+    style-src 'self' 'unsafe-inline' https://*.tradingview.com;
+    img-src 'self' data: https: blob:;
+    connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.tradingview.com https://*.quandl.com https://*.fintech.io;
+    font-src 'self' https://fonts.gstatic.com https://*.tradingview.com;
+    frame-src https://s3.tradingview.com https://*.tradingview.com;
+    worker-src 'self' blob:;
+    child-src 'self' https://s3.tradingview.com https://*.tradingview.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+  ">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
   <style>
@@ -305,20 +326,12 @@
   <!-- Login -->
   <div id="login">
     <h3>Login</h3>
-    <input type="email" id="email" placeholder="Email"><br><br>
-    <input type="password" id="password" placeholder="Password"><br><br>
+  <input type="email" id="email" placeholder="Email" autocomplete="email" required><br><br>
+  <input type="password" id="password" placeholder="Password" autocomplete="current-password" required><br><br>
     <button id="loginBtn">Login</button>
   </div>
 
   <!-- Dashboard (after login) -->
-   <div id="tax-calculator" class="card">
-  <h3>Tax Calculator</h3>
-  <label for="gainInput">Enter estimated gain (€):</label>
-  <input type="number" id="gainInput" placeholder="e.g. 50000">
-  <button id="calcTaxBtn">Calculate Tax</button>
-  <div id="taxResult"></div>
-</div>
-
   <div id="dashboard">
     <h3>Admin Dashboard</h3>
     <button id="logoutBtn">Logout</button>
@@ -333,7 +346,7 @@
 </div>
 
 <h4>Update AUM</h4>
-<input type="number" id="aum-amount" placeholder="New AUM (€)">
+    <input type="number" id="aum-amount" placeholder="New AUM (€)" min="0" max="1000000000" step="0.01">
 <button id="update-aum-btn">Update AUM</button>
 
     <div class="chart-container">
@@ -341,13 +354,25 @@
     </div>
 
     <h4>Add Transaction</h4>
-    <input type="number" id="tx-amount" placeholder="Amount (€)">
-    <input type="date" id="tx-date">
+    <input type="number" id="tx-amount" placeholder="Amount (€)" min="0" max="1000000000" step="0.01">
+    <input type="date" id="tx-date" max="">
     <button id="buy-btn">Buy</button>
     <button id="sell-btn">Sell</button>
 
     <h4>Transactions</h4>
     <ul id="transactions"></ul>
+    
+    
+    <!-- Earnings Calculator -->
+    <div id="earnings-calculator" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 24px; margin-top: 30px; color: #f1f5f9; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); max-width: 400px; margin-left: auto; margin-right: auto; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+      <h3 style="font-size: 1.4rem; font-weight: 600; text-align: center; margin-bottom: 16px; color: #93c5fd; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 8px;">💰 Earnings Calculator</h3>
+      <label for="currentAmount" style="display: block; font-size: 0.95rem; color: #cbd5e1; margin-bottom: 6px;">Current Amount (€):</label>
+      <input type="number" id="currentAmount" placeholder="e.g. 100000" min="0" max="1000000000" step="0.01" style="width: 100%; padding: 10px 12px; margin-bottom: 14px; background-color: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e2e8f0; font-size: 0.95rem; transition: border-color 0.2s ease, box-shadow 0.2s ease;">
+      <label for="previousAmount" style="display: block; font-size: 0.95rem; color: #cbd5e1; margin-bottom: 6px;">Previous Amount (€):</label>
+      <input type="number" id="previousAmount" placeholder="e.g. 80000" min="0" max="1000000000" step="0.01" style="width: 100%; padding: 10px 12px; margin-bottom: 14px; background-color: #1e293b; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e2e8f0; font-size: 0.95rem; transition: border-color 0.2s ease, box-shadow 0.2s ease;">
+      <button id="calcEarningsBtn" style="display: block; width: 100%; background-color: #2563eb; color: white; border: none; padding: 10px 0; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: background-color 0.2s ease, transform 0.15s ease;">Calculate Earnings</button>
+      <div id="earningsResult" style="margin-top: 18px; background-color: rgba(255, 255, 255, 0.03); border-radius: 10px; padding: 12px 14px; font-size: 0.95rem; text-align: center; color: #e2e8f0; box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);"></div>
+    </div>
   </div>
 
   <!-- Markets Page with TradingView Widgets -->
@@ -358,8 +383,41 @@
         <span style="color: #a5b1c2; font-size: 0.9rem;">Real-time market data powered by TradingView</span>
       </div>
       <div>
+        <button id="stockSearchBtn" style="background: #10b981; margin-right: 10px;">Stock Search</button>
         <button id="cryptoDataBtn" style="background: #ff6b35; margin-right: 10px;">Shitcoin data for nerds</button>
         <button id="backToDashboardBtn" style="background: var(--accent);">Back to Dashboard</button>
+      </div>
+    </div>
+    
+    <!-- Market Hours Display -->
+    <div id="market-hours" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #475569; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+      <h4 style="color: #e2e8f0; text-align: center; margin-bottom: 15px; font-size: 1.2rem;">📅 Market Hours (Helsinki Time)</h4>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div class="market-hours-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+          <strong style="color: #93c5fd;">NASDAQ 100</strong><br>
+          <span id="nasdaq-status" style="color: #94a3b8; font-size: 0.9rem;">Loading...</span><br>
+          <span style="color: #cbd5e1; font-size: 0.85rem;">Mon-Fri: 16:30-23:00</span>
+        </div>
+        <div class="market-hours-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #ef4444;">
+          <strong style="color: #93c5fd;">SSE Index</strong><br>
+          <span id="sse-status" style="color: #94a3b8; font-size: 0.9rem;">Loading...</span><br>
+          <span style="color: #cbd5e1; font-size: 0.85rem;">Mon-Fri: 03:00-09:00</span>
+        </div>
+        <div class="market-hours-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+          <strong style="color: #93c5fd;">Hang Seng</strong><br>
+          <span id="hangseng-status" style="color: #94a3b8; font-size: 0.9rem;">Loading...</span><br>
+          <span style="color: #cbd5e1; font-size: 0.85rem;">Mon-Fri: 03:00-06:00, 07:00-10:00</span>
+        </div>
+        <div class="market-hours-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #10b981;">
+          <strong style="color: #93c5fd;">DAX</strong><br>
+          <span id="dax-status" style="color: #94a3b8; font-size: 0.9rem;">Loading...</span><br>
+          <span style="color: #cbd5e1; font-size: 0.85rem;">Mon-Fri: 10:00-18:30</span>
+        </div>
+        <div class="market-hours-item" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+          <strong style="color: #93c5fd;">FTSE 100</strong><br>
+          <span id="ftse-status" style="color: #94a3b8; font-size: 0.9rem;">Loading...</span><br>
+          <span style="color: #cbd5e1; font-size: 0.85rem;">Mon-Fri: 10:00-18:30</span>
+        </div>
       </div>
     </div>
     
@@ -489,6 +547,45 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Stock Search Page -->
+  <div id="stock-search-page" style="display: none;">
+    <h3>Individual Stock Search</h3>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <div>
+        <span style="color: #a5b1c2; font-size: 0.9rem;">Search and analyze individual stocks with TradingView</span>
+      </div>
+      <div>
+        <button id="backToMarketsBtn" style="background: var(--accent);">Back to Markets</button>
+      </div>
+    </div>
+    
+    <!-- Stock Search Interface -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); border: 1px solid #475569; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+      <h4 style="color: #e2e8f0; text-align: center; margin-bottom: 15px; font-size: 1.2rem;">🔍 Search Stocks</h4>
+      <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+        <input type="text" id="stockSymbol" placeholder="Enter stock symbol (e.g., AAPL, TSLA, GOOGL)" style="flex: 1; min-width: 300px; padding: 10px; border: 1px solid #475569; border-radius: 6px; background: #0d1a2b; color: #e2e8f0; font-size: 1rem;">
+        <button id="searchStockBtn" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s;">Search</button>
+      </div>
+      <div style="margin-top: 15px; text-align: center;">
+        <p style="color: #94a3b8; font-size: 0.9rem; margin: 0;">Popular stocks: AAPL, TSLA, GOOGL, MSFT, AMZN, NVDA, META, NFLX</p>
+      </div>
+    </div>
+
+    <!-- Stock Chart Container -->
+    <div id="stock-chart-container" style="display: none;">
+      <div style="background: #0d1a2b; border: 1px solid #475569; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+        <h4 id="stock-chart-title" style="color: #e2e8f0; text-align: center; margin-bottom: 15px; font-size: 1.2rem;">Stock Chart</h4>
+        <div id="stock-widget" style="width: 100%; height: 500px; border-radius: 8px; overflow: hidden;"></div>
+      </div>
+    </div>
+
+    <!-- Recent Searches -->
+    <div id="recent-searches" style="display: none;">
+      <h4 style="color: #e2e8f0; margin-bottom: 15px;">Recent Searches</h4>
+      <div id="recent-searches-list" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;"></div>
     </div>
   </div>
 
