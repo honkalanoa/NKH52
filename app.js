@@ -49,6 +49,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => signOut(aut
 
 // ---------- MARKETS NAVIGATION ----------
 let tradingViewWidgets = {};
+let cryptoWidgets = {};
 
 document.getElementById("marketsBtn").addEventListener("click", () => {
   dashDiv.style.display = "none";
@@ -61,6 +62,25 @@ document.getElementById("backToDashboardBtn").addEventListener("click", () => {
   dashDiv.style.display = "block";
   // Clean up TradingView widgets when leaving
   cleanupTradingViewWidgets();
+  cleanupCryptoWidgets();
+});
+
+// ---------- CRYPTO DATA TOGGLE ----------
+document.getElementById("cryptoDataBtn").addEventListener("click", () => {
+  const cryptoSection = document.getElementById("crypto-data-section");
+  const cryptoBtn = document.getElementById("cryptoDataBtn");
+  
+  if (cryptoSection.style.display === "none") {
+    cryptoSection.style.display = "block";
+    cryptoBtn.textContent = "Hide Shitcoin Data";
+    cryptoBtn.style.background = "#dc2626";
+    initializeCryptoWidgets();
+  } else {
+    cryptoSection.style.display = "none";
+    cryptoBtn.textContent = "Shitcoin data for nerds";
+    cryptoBtn.style.background = "#ff6b35";
+    cleanupCryptoWidgets();
+  }
 });
 
 function initializeTradingViewWidgets() {
@@ -120,6 +140,71 @@ function cleanupTradingViewWidgets() {
     }
   });
   tradingViewWidgets = {};
+}
+
+function initializeCryptoWidgets() {
+  // Initialize all cryptocurrency TradingView widgets
+  const cryptoWidgets = [
+    { id: 'btc-widget', symbol: 'BINANCE:BTCUSDT' },
+    { id: 'eth-widget', symbol: 'BINANCE:ETHUSDT' },
+    { id: 'bnb-widget', symbol: 'BINANCE:BNBUSDT' },
+    { id: 'ada-widget', symbol: 'BINANCE:ADAUSDT' },
+    { id: 'sol-widget', symbol: 'BINANCE:SOLUSDT' },
+    { id: 'xrp-widget', symbol: 'BINANCE:XRPUSDT' },
+    { id: 'doge-widget', symbol: 'BINANCE:DOGEUSDT' },
+    { id: 'dot-widget', symbol: 'BINANCE:DOTUSDT' },
+    { id: 'link-widget', symbol: 'BINANCE:LINKUSDT' },
+    { id: 'ltc-widget', symbol: 'BINANCE:LTCUSDT' }
+  ];
+
+  cryptoWidgets.forEach(widget => {
+    createCryptoWidget(widget.id, widget.symbol);
+  });
+}
+
+function createCryptoWidget(containerId, symbol) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Clean up existing widget if it exists
+  if (cryptoWidgets[containerId]) {
+    cryptoWidgets[containerId].remove();
+  }
+
+  // Create new TradingView widget for crypto
+  cryptoWidgets[containerId] = new TradingView.widget({
+    "autosize": true,
+    "symbol": symbol,
+    "interval": "D",
+    "timezone": "Etc/UTC",
+    "theme": "dark",
+    "style": "1",
+    "locale": "en",
+    "toolbar_bg": "#0d1a2b",
+    "enable_publishing": false,
+    "hide_top_toolbar": true,
+    "hide_legend": false,
+    "save_image": false,
+    "container_id": containerId,
+    "studies": [
+      "RSI@tv-basicstudies",
+      "MACD@tv-basicstudies"
+    ],
+    "show_popup_button": true,
+    "popup_width": "1000",
+    "popup_height": "650",
+    "no_referral_id": true,
+    "referral_id": "NKH52"
+  });
+}
+
+function cleanupCryptoWidgets() {
+  Object.values(cryptoWidgets).forEach(widget => {
+    if (widget && widget.remove) {
+      widget.remove();
+    }
+  });
+  cryptoWidgets = {};
 }
 
 // ---------- POINTS CALCULATION ----------
