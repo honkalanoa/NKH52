@@ -209,6 +209,64 @@
       height: 100%;
     }
 
+    /* Cryptocurrency Section Styles */
+    .crypto-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .crypto-widget-container {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid #ff6b35;
+      border-radius: 12px;
+      padding: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .crypto-widget-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #ff6b35, #f7931e, #ff6b35);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .crypto-widget-container:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+      border-color: #f7931e;
+    }
+
+    .crypto-widget-container h4 {
+      margin: 0 0 15px 0;
+      color: #ff6b35;
+      font-size: 1.1rem;
+      text-align: center;
+      font-weight: 600;
+      text-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+    }
+
+    .crypto-widget-wrapper {
+      width: 100%;
+      height: 280px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0d1a2b;
+    }
+
     @media (max-width: 600px) {
       #login input, input[type="number"], input[type="date"] {
         width: 100%;
@@ -217,6 +275,12 @@
         grid-template-columns: 1fr;
       }
       .tradingview-widget-wrapper {
+        height: 250px;
+      }
+      .crypto-grid {
+        grid-template-columns: 1fr;
+      }
+      .crypto-widget-wrapper {
         height: 250px;
       }
     }
@@ -293,7 +357,10 @@
       <div>
         <span style="color: #a5b1c2; font-size: 0.9rem;">Real-time market data powered by TradingView</span>
       </div>
-      <button id="backToDashboardBtn" style="background: var(--accent);">Back to Dashboard</button>
+      <div>
+        <button id="cryptoDataBtn" style="background: #ff6b35; margin-right: 10px;">Shitcoin data for nerds</button>
+        <button id="backToDashboardBtn" style="background: var(--accent);">Back to Dashboard</button>
+      </div>
     </div>
     
     <div class="tradingview-grid">
@@ -334,6 +401,92 @@
         <h4>FTSE 100</h4>
         <div class="tradingview-widget-wrapper">
           <div class="tradingview-widget-container__widget" id="ftse100-widget"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cryptocurrency Data Section -->
+    <div id="crypto-data-section" style="display: none; margin-top: 30px;">
+      <h3 style="color: #ff6b35; text-align: center; margin-bottom: 20px;">🚀 Top 10 Cryptocurrencies</h3>
+      <div class="crypto-grid">
+        <!-- Bitcoin -->
+        <div class="crypto-widget-container">
+          <h4>Bitcoin (BTC)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="btc-widget"></div>
+          </div>
+        </div>
+
+        <!-- Ethereum -->
+        <div class="crypto-widget-container">
+          <h4>Ethereum (ETH)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="eth-widget"></div>
+          </div>
+        </div>
+
+        <!-- Binance Coin -->
+        <div class="crypto-widget-container">
+          <h4>Binance Coin (BNB)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="bnb-widget"></div>
+          </div>
+        </div>
+
+        <!-- Cardano -->
+        <div class="crypto-widget-container">
+          <h4>Cardano (ADA)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="ada-widget"></div>
+          </div>
+        </div>
+
+        <!-- Solana -->
+        <div class="crypto-widget-container">
+          <h4>Solana (SOL)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="sol-widget"></div>
+          </div>
+        </div>
+
+        <!-- XRP -->
+        <div class="crypto-widget-container">
+          <h4>XRP (XRP)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="xrp-widget"></div>
+          </div>
+        </div>
+
+        <!-- Dogecoin -->
+        <div class="crypto-widget-container">
+          <h4>Dogecoin (DOGE)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="doge-widget"></div>
+          </div>
+        </div>
+
+        <!-- Polkadot -->
+        <div class="crypto-widget-container">
+          <h4>Polkadot (DOT)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="dot-widget"></div>
+          </div>
+        </div>
+
+        <!-- Chainlink -->
+        <div class="crypto-widget-container">
+          <h4>Chainlink (LINK)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="link-widget"></div>
+          </div>
+        </div>
+
+        <!-- Litecoin -->
+        <div class="crypto-widget-container">
+          <h4>Litecoin (LTC)</h4>
+          <div class="crypto-widget-wrapper">
+            <div class="tradingview-widget-container__widget" id="ltc-widget"></div>
+          </div>
         </div>
       </div>
     </div>
