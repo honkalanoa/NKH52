@@ -77,6 +77,55 @@ function validateCommissionAmount(amount) {
   return !isNaN(num) && Math.abs(num) <= 1000000000;
 }
 
+// ---------- PERFORMANCE (TIME-WEIGHTED) ----------
+function toJsDateFromFs(ts) {
+  // handle Firestore Timestamp with seconds
+  if (!ts) return null;
+  if (ts.seconds) return new Date(ts.seconds * 1000);
+  const d = new Date(ts);
+  return isNaN(d) ? null : d;
+}
+
+function sumProfitBetween(txs, startDate, endDateInclusive) {
+  const startMs = startDate ? startDate.getTime() : -Infinity;
+  const endMs = endDateInclusive ? endDateInclusive.getTime() : Infinity;
+  return txs.reduce((sum, t) => {
+    const d = new Date(t.date);
+    const ms = d.getTime();
+    if (isNaN(ms)) return sum;
+    if (ms > endMs || ms <= startMs) return sum;
+    const amt = parseFloat(t.amount || 0) || 0;
+    return sum + (t.type === 'sell' ? -amt : amt);
+  }, 0);
+}
+
+function computeTWRSeries(aumHistory, txs) {
+  // aumHistory: [{amount, date(Timestamp)}] sorted asc by date
+  // txs: [{type, amount, date(string yyyy-mm-dd)}]
+  if (!Array.isArray(aumHistory) || aumHistory.length === 0) return { labels: [], values: [] };
+  const points = [];
+  let cumulative = 1; // factor
+  for (let i = 1; i < aumHistory.length; i++) {
+    const prev = aumHistory[i - 1];
+    const curr = aumHistory[i];
+    const startAmt = Number(prev.amount) || 0;
+    const endAmt = Number(curr.amount) || 0;
+    const startDate = toJsDateFromFs(prev.date);
+    const endDate = toJsDateFromFs(curr.date);
+    if (!startDate || !endDate || startAmt <= 0) {
+      points.push({ date: endDate || new Date(), value: (cumulative - 1) * 100 });
+      continue;
+    }
+    const profit = sumProfitBetween(txs, startDate, endDate);
+    const r = profit / startAmt; // neutralize flows
+    cumulative *= (1 + r);
+    points.push({ date: endDate, value: (cumulative - 1) * 100 });
+  }
+  const labels = points.map(p => p.date.toLocaleDateString());
+  const values = points.map(p => p.value);
+  return { labels, values };
+}
+
 function validateEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -799,16 +848,24 @@ async function loadDashboard() {
     .map(d => d.data())
     .filter(t => t.newAmount !== undefined)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-  const points = calculatePointsFromTransactions(txs);
-  pointsEl.innerText = `Points: ${points.toFixed(2)}`;
+  // Display latest TWR percentage as points
+  const aumSnapForPts = await getDocs(collection(db, "funds", "total", "aumHistory"));
+  const aumHistForPts = aumSnapForPts.docs.map(d => d.data()).sort((a,b) => new Date(a.date.seconds * 1000) - new Date(b.date.seconds * 1000));
+  const { values: twrValues } = computeTWRSeries(aumHistForPts, txs);
+  const latestPct = twrValues.length ? twrValues[twrValues.length - 1] : 0;
+  pointsEl.innerText = `Performance: ${latestPct.toFixed(2)}%`;
 
 
   transactionsList.innerHTML = txs.map(
     t => `<li>${t.type.toUpperCase()} €${t.amount} (${t.date}) → total: ${t.newAmount}</li>`
   ).join("");
 
-  const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => calculatePointsFromTransactions(txs.filter(x => new Date(x.date) <= new Date(t.date))));
+  // Build time-weighted return series from AUM history + profit txs
+  const aumSnap = await getDocs(collection(db, "funds", "total", "aumHistory"));
+  const aumHist = aumSnap.docs.map(d => d.data()).sort((a,b) => new Date(a.date.seconds * 1000) - new Date(b.date.seconds * 1000));
+  const twr = computeTWRSeries(aumHist, txs);
+  const labels = twr.labels;
+  const dataPoints = twr.values;
 
   if (fundChart) fundChart.destroy();
   fundChart = new Chart(chartCanvas, {
@@ -845,8 +902,11 @@ async function loadPublicView() {
   const points = calculatePointsFromTransactions(txs);
   publicBalance.innerText = `Points: ${points.toFixed(2)} (€${currentAUM.toFixed(2)})`;
 
-  const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => calculatePointsFromTransactions(txs.filter(x => new Date(x.date) <= new Date(t.date))));
+  const aumSnap = await getDocs(collection(db, "funds", "total", "aumHistory"));
+  const aumHist = aumSnap.docs.map(d => d.data()).sort((a,b) => new Date(a.date.seconds * 1000) - new Date(b.date.seconds * 1000));
+  const twr = computeTWRSeries(aumHist, txs);
+  const labels = twr.labels;
+  const dataPoints = twr.values;
 
   if (publicChart) publicChart.destroy();
   publicChart = new Chart(publicChartCanvas, {
