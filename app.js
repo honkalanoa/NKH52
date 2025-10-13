@@ -13,6 +13,9 @@ import {
   getDocs,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import {
+  Timestamp
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // Elements
 const loginDiv = document.getElementById("login");
@@ -20,6 +23,7 @@ const dashDiv = document.getElementById("dashboard");
 const publicDiv = document.getElementById("public-view");
 const marketsDiv = document.getElementById("markets-page");
 const stockSearchDiv = document.getElementById("stock-search-page");
+const commissionsDiv = document.getElementById("commissions-page");
 const balanceP = document.getElementById("balance");
 const transactionsList = document.getElementById("transactions");
 const chartCanvas = document.getElementById("fundChart");
@@ -27,6 +31,14 @@ const publicChartCanvas = document.getElementById("publicChart");
 const perfDiv = document.getElementById("perf");
 const publicPerfDiv = document.getElementById("public-perf");
 const publicBalance = document.getElementById("public-balance");
+
+// Commissions Elements
+const commissionsTbody = document.getElementById("commissions-tbody");
+const commissionDateInput = document.getElementById("commission-date");
+const commissionAmountInput = document.getElementById("commission-amount");
+const commissionNoteInput = document.getElementById("commission-note");
+const exportCsvBtn = document.getElementById("exportCsvBtn");
+const bulkPercentInput = document.getElementById("bulk-percent");
 
 // New AUM Elements
 const aumTotal = document.getElementById("aum-total");
@@ -49,6 +61,20 @@ function sanitizeInput(input) {
       default: return match;
     }
   });
+}
+
+// ---------- COMMISSIONS HELPERS ----------
+function ensureCommissionDateMaxToday() {
+  if (commissionDateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    commissionDateInput.max = today;
+    if (!commissionDateInput.value) commissionDateInput.value = today;
+  }
+}
+
+function validateCommissionAmount(amount) {
+  const num = parseFloat(amount);
+  return !isNaN(num) && Math.abs(num) <= 1000000000;
 }
 
 function validateEmail(email) {
@@ -188,6 +214,7 @@ let recentSearches = [];
 document.getElementById("marketsBtn").addEventListener("click", () => {
   dashDiv.style.display = "none";
   stockSearchDiv.style.display = "none";
+  commissionsDiv.style.display = "none";
   marketsDiv.style.display = "block";
   initializeTradingViewWidgets();
   updateMarketHours();
@@ -196,6 +223,7 @@ document.getElementById("marketsBtn").addEventListener("click", () => {
 document.getElementById("backToDashboardBtn").addEventListener("click", () => {
   marketsDiv.style.display = "none";
   stockSearchDiv.style.display = "none";
+  commissionsDiv.style.display = "none";
   dashDiv.style.display = "block";
   // Clean up TradingView widgets when leaving
   cleanupTradingViewWidgets();
@@ -206,6 +234,7 @@ document.getElementById("backToDashboardBtn").addEventListener("click", () => {
 // Stock Search Navigation
 document.getElementById("stockSearchBtn").addEventListener("click", () => {
   marketsDiv.style.display = "none";
+  commissionsDiv.style.display = "none";
   stockSearchDiv.style.display = "block";
   cleanupTradingViewWidgets();
   cleanupCryptoWidgets();
@@ -214,10 +243,26 @@ document.getElementById("stockSearchBtn").addEventListener("click", () => {
 
 document.getElementById("backToMarketsBtn").addEventListener("click", () => {
   stockSearchDiv.style.display = "none";
+  commissionsDiv.style.display = "none";
   marketsDiv.style.display = "block";
   cleanupStockWidget();
   initializeTradingViewWidgets();
   updateMarketHours();
+});
+
+// ---------- COMMISSIONS NAVIGATION ----------
+document.getElementById("commissionsBtn").addEventListener("click", () => {
+  dashDiv.style.display = "none";
+  marketsDiv.style.display = "none";
+  stockSearchDiv.style.display = "none";
+  commissionsDiv.style.display = "block";
+  ensureCommissionDateMaxToday();
+  loadCommissions();
+});
+
+document.getElementById("backToDashboardFromCommissions").addEventListener("click", () => {
+  commissionsDiv.style.display = "none";
+  dashDiv.style.display = "block";
 });
 
 // ---------- CRYPTO DATA TOGGLE ----------
@@ -540,6 +585,17 @@ function calculatePoints(aum, totalInvested) {
   return (aum / totalInvested) * aum * scalingFactor;
 }
 
+// New points model: grows with BUY, decreases with SELL
+function calculatePointsFromTransactions(transactions) {
+  if (!Array.isArray(transactions)) return 0;
+  return transactions.reduce((sum, tx) => {
+    const amt = parseFloat(tx.amount || 0) || 0;
+    if (tx.type === 'buy') return sum + amt;
+    if (tx.type === 'sell') return sum - amt;
+    return sum;
+  }, 0);
+}
+
 // ---------- ADD TRANSACTION ----------
 async function addTransaction(type) {
   const amountInput = document.getElementById("tx-amount").value;
@@ -726,29 +782,33 @@ async function loadDashboard() {
   const fundData = await getFundData();
   const currentAUM = fundData.amount || 0;
   const totalInvested = fundData.totalInvested || 0;
-  const points = calculatePoints(currentAUM, totalInvested);
-
-  balanceP.innerText = `AUM: €${currentAUM.toFixed(2)}`;
+  // Hide incorrect AUM balance display on top
+  if (balanceP) {
+    balanceP.style.display = 'none';
+    balanceP.innerText = '';
+  }
   let pointsEl = document.getElementById("pointsDisplay");
   if (!pointsEl) {
     pointsEl = document.createElement("p");
     pointsEl.id = "pointsDisplay";
     balanceP.parentNode.insertBefore(pointsEl, balanceP.nextSibling);
   }
-  pointsEl.innerText = `Points: ${points.toFixed(2)}`;
-
+  // Points now based on net buy/sell transactions
   const txSnap = await getDocs(collection(db, "funds", "total", "transactions"));
   const txs = txSnap.docs
     .map(d => d.data())
     .filter(t => t.newAmount !== undefined)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const points = calculatePointsFromTransactions(txs);
+  pointsEl.innerText = `Points: ${points.toFixed(2)}`;
+
 
   transactionsList.innerHTML = txs.map(
     t => `<li>${t.type.toUpperCase()} €${t.amount} (${t.date}) → total: ${t.newAmount}</li>`
   ).join("");
 
   const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => calculatePoints(t.newAmount, totalInvested));
+  const dataPoints = txs.map(t => calculatePointsFromTransactions(txs.filter(x => new Date(x.date) <= new Date(t.date))));
 
   if (fundChart) fundChart.destroy();
   fundChart = new Chart(chartCanvas, {
@@ -777,17 +837,16 @@ async function loadPublicView() {
   const fundData = await getFundData();
   const currentAUM = fundData.amount || 0;
   const totalInvested = fundData.totalInvested || 0;
-  const points = calculatePoints(currentAUM, totalInvested);
-  publicBalance.innerText = `Points: ${points.toFixed(2)} (€${currentAUM.toFixed(2)})`;
-
   const txSnap = await getDocs(collection(db, "funds", "total", "transactions"));
   const txs = txSnap.docs
     .map(d => d.data())
     .filter(t => t.newAmount !== undefined)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const points = calculatePointsFromTransactions(txs);
+  publicBalance.innerText = `Points: ${points.toFixed(2)} (€${currentAUM.toFixed(2)})`;
 
   const labels = txs.map(t => t.date);
-  const dataPoints = txs.map(t => calculatePoints(t.newAmount, totalInvested));
+  const dataPoints = txs.map(t => calculatePointsFromTransactions(txs.filter(x => new Date(x.date) <= new Date(t.date))));
 
   if (publicChart) publicChart.destroy();
   publicChart = new Chart(publicChartCanvas, {
@@ -870,6 +929,140 @@ document.getElementById("calcEarningsBtn").addEventListener("click", () => {
     <p><strong>Management Fee (20%):</strong> €${managementFee.toFixed(2)}</p>
     <p style="color: #10b981; font-weight: bold;"><strong>Final Net Earnings:</strong> €${finalNetEarnings.toFixed(2)}</p>
   `;
+});
+
+// ---------- COMMISSIONS CRUD ----------
+async function loadCommissions() {
+  const snap = await getDocs(collection(db, "commissions"));
+  const rows = snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  commissionsTbody.innerHTML = rows.map(r => renderCommissionRowHtml(r)).join("");
+  bindCommissionRowEvents();
+}
+
+function renderCommissionRowHtml(row) {
+  const dateStr = row.date ? new Date(row.date).toISOString().split('T')[0] : '';
+  const amountStr = (typeof row.amount === 'number') ? row.amount.toFixed(2) : '';
+  const noteStr = row.note ? sanitizeInput(String(row.note)) : '';
+  return `
+    <tr data-id="${row.id}">
+      <td style="padding:8px; border-bottom:1px solid var(--border);"><input type="date" value="${dateStr}" class="cm-date" max=""></td>
+      <td style="padding:8px; border-bottom:1px solid var(--border); text-align:right;"><input type="number" value="${amountStr}" class="cm-amount" step="0.01" min="-1000000000" max="1000000000" style="width:140px;"></td>
+      <td style="padding:8px; border-bottom:1px solid var(--border);"><input type="text" value="${noteStr}" class="cm-note" style="width:100%; padding:6px; background:#0d1a2b; border:1px solid var(--border); border-radius:6px; color: var(--text);"></td>
+      <td style="padding:8px; border-bottom:1px solid var(--border); text-align:right;">
+        <button class="cm-save" style="margin-right:6px;">Save</button>
+        <button class="cm-delete" style="background:#ef4444;">Delete</button>
+      </td>
+    </tr>`;
+}
+
+function bindCommissionRowEvents() {
+  const today = new Date().toISOString().split('T')[0];
+  commissionsTbody.querySelectorAll('input.cm-date').forEach(inp => inp.max = today);
+
+  commissionsTbody.querySelectorAll('button.cm-save').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr');
+      const id = tr.getAttribute('data-id');
+      const date = tr.querySelector('.cm-date').value;
+      const amountVal = tr.querySelector('.cm-amount').value;
+      const note = tr.querySelector('.cm-note').value;
+
+      if (!date) { showSecureError('Please set a date.'); return; }
+      const amount = parseFloat(amountVal);
+      if (!validateCommissionAmount(amount)) { showSecureError('Enter valid amount (±1,000,000,000).'); return; }
+
+      await updateDoc(doc(db, 'commissions', id), {
+        date,
+        amount,
+        note: sanitizeInput(note),
+        updatedAt: serverTimestamp()
+      }).catch(() => showSecureError('Failed to save row.'));
+      await loadCommissions();
+    });
+  });
+
+  commissionsTbody.querySelectorAll('button.cm-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr');
+      const id = tr.getAttribute('data-id');
+      await updateDoc(doc(db, 'commissions', id), { __deleted: true, updatedAt: serverTimestamp() }).catch(() => {});
+      // actually delete to keep collection tidy
+      try {
+        await import('https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js').then(m => m.deleteDoc(doc(db, 'commissions', id)));
+      } catch (err) {}
+      await loadCommissions();
+    });
+  });
+}
+
+document.getElementById('addCommissionBtn').addEventListener('click', async () => {
+  const date = commissionDateInput.value;
+  const note = commissionNoteInput.value;
+  const amountVal = commissionAmountInput.value;
+
+  if (!date) { showSecureError('Please select a date.'); return; }
+  if (!amountVal || amountVal.trim() === '') { showSecureError('Enter amount.'); return; }
+  const amount = parseFloat(amountVal);
+  if (!validateCommissionAmount(amount)) { showSecureError('Enter valid amount (±1,000,000,000).'); return; }
+
+  try {
+    await addDoc(collection(db, 'commissions'), {
+      date,
+      amount,
+      note: sanitizeInput(note),
+      createdAt: serverTimestamp()
+    });
+    commissionAmountInput.value = '';
+    commissionNoteInput.value = '';
+    ensureCommissionDateMaxToday();
+    await loadCommissions();
+  } catch (e) {
+    showSecureError('Failed to add commission.');
+  }
+});
+
+// CSV Export
+exportCsvBtn.addEventListener('click', async () => {
+  const snap = await getDocs(collection(db, 'commissions'));
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const header = ['id','date','amount','note'];
+  const csv = [header.join(',')].concat(
+    rows.map(r => [r.id, r.date || '', r.amount ?? '', (r.note || '').replace(/\n|\r|,/g, ' ')].join(','))
+  ).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `commissions-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Bulk percentage adjust
+document.getElementById('applyBulkBtn').addEventListener('click', async () => {
+  const pctStr = bulkPercentInput.value;
+  if (!pctStr || pctStr.trim() === '') { showSecureError('Enter percentage.'); return; }
+  const pct = parseFloat(pctStr);
+  if (isNaN(pct)) { showSecureError('Invalid percentage.'); return; }
+
+  const snap = await getDocs(collection(db, 'commissions'));
+  const updates = snap.docs.map(async d => {
+    const data = d.data();
+    const oldAmt = parseFloat(data.amount || 0);
+    const newAmt = oldAmt + (oldAmt * pct / 100);
+    return updateDoc(doc(db, 'commissions', d.id), { amount: newAmt, updatedAt: serverTimestamp() });
+  });
+  try {
+    await Promise.all(updates);
+    await loadCommissions();
+  } catch (e) {
+    showSecureError('Bulk update failed.');
+  }
 });
 
 // ---------- MARKET HOURS ----------
