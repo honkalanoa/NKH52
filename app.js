@@ -493,7 +493,8 @@ function initializeTradingViewWidgets() {
     { id: 'hangseng-widget', symbol: 'HSI' },
     { id: 'dax-widget', symbol: 'GDAXI' },
     { id: 'eurostoxx-widget', symbol: 'STOXX50' },
-    { id: 'ftse100-widget', symbol: 'FTSE' }
+    { id: 'ftse100-widget', symbol: 'FTSE' },
+    { id: 'eurusd-widget', symbol: 'FX:EURUSD' }
   ];
 
   widgets.forEach(widget => {
