@@ -35,6 +35,10 @@ const publicBalance = document.getElementById("public-balance");
 const monthlyGoalInput = document.getElementById("monthly-goal-input");
 const saveMonthlyGoalBtn = document.getElementById("save-monthly-goal-btn");
 const monthlyGoalDisplay = document.getElementById("monthly-goal-display");
+const assetsPageDiv = document.getElementById("assets-page");
+const assetsTbody = document.getElementById("assets-tbody");
+const assetKeyInput = document.getElementById("asset-key");
+const assetValueInput = document.getElementById("asset-value");
 
 // Commissions Elements
 const commissionsTbody = document.getElementById("commissions-tbody");
@@ -300,6 +304,89 @@ if (saveMonthlyGoalBtn) {
   saveMonthlyGoalBtn.addEventListener('click', saveMonthlyGoal);
 }
 
+// ---------- ASSETS OWNED (CRUD) ----------
+function renderAssetsRows(dataObj) {
+  const entries = Object.entries(dataObj || {});
+  if (!assetsTbody) return;
+  assetsTbody.innerHTML = entries.map(([key, value]) => `
+    <tr data-key="${key}">
+      <td style="padding:8px; border-bottom:1px solid var(--border);"><input type="text" class="as-key" value="${sanitizeInput(key)}" style="width:100%; padding:6px; background:#0d1a2b; border:1px solid var(--border); border-radius:6px; color: var(--text);"></td>
+      <td style="padding:8px; border-bottom:1px solid var(--border);"><input type="text" class="as-value" value="${sanitizeInput(String(value ?? ''))}" style="width:100%; padding:6px; background:#0d1a2b; border:1px solid var(--border); border-radius:6px; color: var(--text);"></td>
+      <td style="padding:8px; border-bottom:1px solid var(--border); text-align:right;">
+        <button class="as-save" style="margin-right:6px;">Save</button>
+        <button class="as-delete" style="background:#ef4444;">Delete</button>
+      </td>
+    </tr>
+  `).join("");
+
+  // Bind events
+  assetsTbody.querySelectorAll('button.as-save').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr');
+      const oldKey = tr.getAttribute('data-key');
+      const newKey = tr.querySelector('.as-key').value.trim();
+      const newVal = tr.querySelector('.as-value').value.trim();
+      await saveAssetEntry(oldKey, newKey, newVal);
+    });
+  });
+  assetsTbody.querySelectorAll('button.as-delete').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const tr = e.target.closest('tr');
+      const key = tr.getAttribute('data-key');
+      await deleteAssetEntry(key);
+    });
+  });
+}
+
+async function loadAssetsOwned() {
+  try {
+    const ref = doc(db, 'Assets', 'AssetsOwned');
+    const snap = await getDoc(ref);
+    const data = snap.exists() ? snap.data() : {};
+    renderAssetsRows(data);
+  } catch (e) {
+    showSecureError('Failed to load assets.');
+  }
+}
+
+async function saveAssetEntry(oldKey, newKey, newValue) {
+  const key = sanitizeInput(newKey);
+  const value = sanitizeInput(newValue);
+  if (!key) { showSecureError('Category cannot be empty.'); return; }
+  try {
+    const ref = doc(db, 'Assets', 'AssetsOwned');
+    const payload = { [key]: value, updatedAt: serverTimestamp() };
+    // If key changed, remove old key then set new
+    if (oldKey && oldKey !== key) {
+      const { deleteField } = await import('https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js');
+      await updateDoc(ref, { [oldKey]: deleteField() });
+    }
+    await setDoc(ref, payload, { merge: true });
+    await loadAssetsOwned();
+  } catch (e) {
+    showSecureError('Failed to save asset entry.');
+  }
+}
+
+async function deleteAssetEntry(key) {
+  if (!key) return;
+  try {
+    const ref = doc(db, 'Assets', 'AssetsOwned');
+    const { deleteField } = await import('https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js');
+    await updateDoc(ref, { [key]: deleteField(), updatedAt: serverTimestamp() });
+    await loadAssetsOwned();
+  } catch (e) {
+    showSecureError('Failed to delete asset entry.');
+  }
+}
+
+document.getElementById('addAssetBtn').addEventListener('click', async () => {
+  const key = assetKeyInput.value.trim();
+  const val = assetValueInput.value.trim();
+  await saveAssetEntry('', key, val);
+  assetValueInput.value = '';
+});
+
 // ---------- MARKETS NAVIGATION ----------
 let tradingViewWidgets = {};
 let cryptoWidgets = {};
@@ -310,6 +397,7 @@ document.getElementById("marketsBtn").addEventListener("click", () => {
   dashDiv.style.display = "none";
   stockSearchDiv.style.display = "none";
   commissionsDiv.style.display = "none";
+  if (assetsPageDiv) assetsPageDiv.style.display = "none";
   marketsDiv.style.display = "block";
   initializeTradingViewWidgets();
   updateMarketHours();
@@ -319,6 +407,7 @@ document.getElementById("backToDashboardBtn").addEventListener("click", () => {
   marketsDiv.style.display = "none";
   stockSearchDiv.style.display = "none";
   commissionsDiv.style.display = "none";
+  if (assetsPageDiv) assetsPageDiv.style.display = "none";
   dashDiv.style.display = "block";
   // Clean up TradingView widgets when leaving
   cleanupTradingViewWidgets();
@@ -350,6 +439,7 @@ document.getElementById("commissionsBtn").addEventListener("click", () => {
   dashDiv.style.display = "none";
   marketsDiv.style.display = "none";
   stockSearchDiv.style.display = "none";
+  if (assetsPageDiv) assetsPageDiv.style.display = "none";
   commissionsDiv.style.display = "block";
   ensureCommissionDateMaxToday();
   loadCommissions();
@@ -357,6 +447,23 @@ document.getElementById("commissionsBtn").addEventListener("click", () => {
 
 document.getElementById("backToDashboardFromCommissions").addEventListener("click", () => {
   commissionsDiv.style.display = "none";
+  dashDiv.style.display = "block";
+});
+
+// ---------- ASSETS NAVIGATION ----------
+document.getElementById("assetsBtn").addEventListener("click", () => {
+  dashDiv.style.display = "none";
+  marketsDiv.style.display = "none";
+  stockSearchDiv.style.display = "none";
+  commissionsDiv.style.display = "none";
+  if (assetsPageDiv) {
+    assetsPageDiv.style.display = "block";
+    loadAssetsOwned();
+  }
+});
+
+document.getElementById("backToDashboardFromAssets").addEventListener("click", () => {
+  if (assetsPageDiv) assetsPageDiv.style.display = "none";
   dashDiv.style.display = "block";
 });
 
@@ -385,6 +492,7 @@ function initializeTradingViewWidgets() {
     { id: 'sse-widget', symbol: '000001' },
     { id: 'hangseng-widget', symbol: 'HSI' },
     { id: 'dax-widget', symbol: 'GDAXI' },
+    { id: 'eurostoxx-widget', symbol: 'STOXX50' },
     { id: 'ftse100-widget', symbol: 'FTSE' }
   ];
 
