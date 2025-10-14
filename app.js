@@ -11,7 +11,8 @@ import {
   collection,
   addDoc,
   getDocs,
-  serverTimestamp
+  serverTimestamp,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import {
   Timestamp
@@ -31,6 +32,9 @@ const publicChartCanvas = document.getElementById("publicChart");
 const perfDiv = document.getElementById("perf");
 const publicPerfDiv = document.getElementById("public-perf");
 const publicBalance = document.getElementById("public-balance");
+const monthlyGoalInput = document.getElementById("monthly-goal-input");
+const saveMonthlyGoalBtn = document.getElementById("save-monthly-goal-btn");
+const monthlyGoalDisplay = document.getElementById("monthly-goal-display");
 
 // Commissions Elements
 const commissionsTbody = document.getElementById("commissions-tbody");
@@ -253,6 +257,48 @@ function createErrorDiv() {
   return errorDiv;
 }
 document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
+
+// ---------- GOALS (MONTHLY) ----------
+async function loadMonthlyGoal() {
+  if (!monthlyGoalDisplay) return;
+  try {
+    const goalsSnap = await getDocs(collection(db, 'Goals'));
+    // Use a single document named 'current' if exists, else first doc
+    let currentDoc = null;
+    goalsSnap.forEach(d => { if (d.id === 'current') currentDoc = d; });
+    const docToUse = currentDoc || (goalsSnap.docs.length ? goalsSnap.docs[0] : null);
+    if (docToUse) {
+      const data = docToUse.data();
+      const val = data && data["for this month"] ? String(data["for this month"]) : '';
+      monthlyGoalDisplay.textContent = val ? `This month: ${val}` : 'No monthly goal set yet.';
+      if (monthlyGoalInput) monthlyGoalInput.value = val;
+    } else {
+      monthlyGoalDisplay.textContent = 'No monthly goal set yet.';
+    }
+  } catch (e) {
+    console.error('Failed to load monthly goal', e);
+  }
+}
+
+async function saveMonthlyGoal() {
+  if (!monthlyGoalInput) return;
+  const raw = monthlyGoalInput.value;
+  const value = sanitizeInput(String(raw).trim());
+  if (!value) { showSecureError('Enter a goal for the month.'); return; }
+  try {
+    // Store in a stable doc id 'current'
+    const currentRef = doc(db, 'Goals', 'current');
+    await setDoc(currentRef, { "for this month": value, updatedAt: serverTimestamp() }, { merge: true });
+    if (monthlyGoalDisplay) monthlyGoalDisplay.textContent = `This month: ${value}`;
+  } catch (e) {
+    showSecureError('Failed to save monthly goal.');
+    console.error('Save goal error', e);
+  }
+}
+
+if (saveMonthlyGoalBtn) {
+  saveMonthlyGoalBtn.addEventListener('click', saveMonthlyGoal);
+}
 
 // ---------- MARKETS NAVIGATION ----------
 let tradingViewWidgets = {};
@@ -1199,6 +1245,7 @@ onAuthStateChanged(auth, user => {
     dashDiv.style.display = "block";
     marketsDiv.style.display = "none";
     loadDashboard();
+    loadMonthlyGoal();
   } else {
     publicDiv.style.display = "block";
     loginDiv.style.display = "block";

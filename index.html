@@ -353,6 +353,13 @@
       <canvas id="fundChart"></canvas>
     </div>
 
+    <h4>Goal for Month</h4>
+    <div style="display:flex; gap:8px; align-items:center; justify-content:center; flex-wrap: wrap; margin-bottom: 8px;">
+      <input type="text" id="monthly-goal-input" placeholder="e.g. 5% or any text" style="min-width:260px; padding:8px; background:#0d1a2b; border:1px solid var(--border); border-radius:6px; color: var(--text);">
+      <button id="save-monthly-goal-btn" style="background:#8b5cf6;">Save Goal for Month</button>
+    </div>
+    <p id="monthly-goal-display" style="text-align:center; color:#cbd5e1; margin-top: 4px;"></p>
+
     <h4>Add Transaction</h4>
     <input type="number" id="tx-amount" placeholder="Amount (€)" min="0" max="1000000000" step="0.01">
     <input type="date" id="tx-date" max="">
